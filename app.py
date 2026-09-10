@@ -7,21 +7,47 @@ app = Flask(__name__)
 def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=None):
     rule_thickness = 0.71 if rule_pt == "2PT" else 1.05
 
-    # 1. PERTINAX - INFINYA SPEC (Client Request)
+    # 1. PERTINAX - INFINYA SPEC (Strict Table Lookup from Reference)
     inf_rule_h = 23.80
-    inf_depth = round(math.ceil((s + 0.10) * 20) / 20, 2)
+    inf_depth = s
     inf_w_par = round(rule_thickness + (1.60 * s), 2)
     inf_w_cross = round(rule_thickness + (1.85 * s), 2)
     inf_w_uni = round(math.ceil(inf_w_cross * 20) / 20, 2)
 
+    # Infinya Table Range Mapping (from official plant table image)
+    if s <= 0.35:
+        inf_depth = 0.40
+        inf_rule_h = 23.4
+        inf_width_table = 1.30
+    elif s <= 0.44:
+        inf_depth = 0.40
+        inf_rule_h = 23.4
+        inf_width_table = 1.40
+    elif s <= 0.49:
+        inf_depth = 0.50
+        inf_rule_h = 23.3
+        inf_width_table = 1.40
+    elif s <= 0.54:
+        inf_depth = 0.50
+        inf_rule_h = 23.3
+        inf_width_table = 1.50
+    elif s <= 0.60:
+        inf_depth = 0.60
+        inf_rule_h = 23.2
+        inf_width_table = 1.60
+    else:
+        inf_depth = round(s, 2)
+        inf_rule_h = round(23.80 - inf_depth, 1)
+        inf_width_table = round(rule_thickness + (1.85 * s), 2)
+
     # 2. COUNTERPLATE MARBACH (Steel SRP Specification - Round Rule Heights)
-    mb_depth = round(s + 0.10, 2)  #[cite: 2] Marbach SRP depth standard (s + 0.10)
-    mb_rule_h = 23.6               # Clean round shop floor rule height (replacing 23.65)
-    mb_w_par = round(rule_thickness + (1.85 * s), 2)  #[cite: 2] Marbach SRP parallel width
-    mb_w_cross = round(mb_w_par + 0.10, 2)            #[cite: 2] Marbach SRP cross width (+0.10mm)
+    mb_depth = round(s + 0.10, 2)
+    mb_rule_h = 23.6 if s <= 0.50 else 23.5
+    mb_w_par = round(rule_thickness + (1.85 * s), 2)
+    mb_w_cross = round(mb_w_par + 0.10, 2)
     mb_w_uni = round(math.ceil(mb_w_cross * 20) / 20, 2)
 
-    # 3. PERTINAX - MARBACH CALCULATION (Traditional Variable Rule)
+    # 3. PERTINAX - MARBACH FORMULA (Traditional Variable Rule)
     pt_depth = round(s, 2)
     pt_rule_h = round(23.80 - pt_depth, 2)
     pt_w_par = round(rule_thickness + (1.40 * s), 2)
@@ -32,7 +58,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
     audit_verdict = None
     if actual_depth is not None and actual_width is not None:
         depth_dev = actual_depth - inf_depth
-        width_dev = actual_width - inf_w_cross
+        width_dev = actual_width - inf_width_table
         
         if abs(depth_dev) <= 0.02 and abs(width_dev) <= 0.03:
             audit_verdict = {
@@ -42,7 +68,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
                 "style_text": "text-emerald-400",
                 "message": "Dimensions are within optimal shop-floor manufacturing tolerances."
             }
-        elif actual_depth > inf_depth and actual_width < inf_w_cross:
+        elif actual_depth > inf_depth and actual_width < inf_width_table:
             audit_verdict = {
                 "status": "WARNING",
                 "style_bg": "bg-amber-500/10",
@@ -65,14 +91,14 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
         "rule_thickness": rule_thickness,
         "infinya": {
             "name": "1. Pertinax (Infinya Spec)",
-            "rule_height": f"{inf_rule_h:.2f} mm",
-            "rule_type": "FIXED (23.80 mm)",
+            "rule_height": f"{inf_rule_h:.1f} mm",
+            "rule_type": "INFINYA TABLE",
             "depth": f"{inf_depth:.2f} mm",
-            "width_parallel": f"{inf_w_par:.2f} mm",
-            "width_cross": f"{inf_w_cross:.2f} mm",
-            "width_unified": f"{inf_w_uni:.2f} mm",
-            "plate_thickness": "Pertinax / Standard",
-            "description": "Specific client requirement (Infinya): Fixed standard rule with optimized shop depth."
+            "width_parallel": f"{inf_width_table:.2f} mm",
+            "width_cross": f"{inf_width_table:.2f} mm",
+            "width_unified": f"{inf_width_table:.2f} mm",
+            "plate_thickness": "Pertinax",
+            "description": f"Infinya standard table lookup for caliper {s:.2f}mm."
         },
         "marbach_cp": {
             "name": "2. Counterplate Marbach (SRP)",
@@ -83,10 +109,10 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
             "width_cross": f"{mb_w_cross:.2f} mm",
             "width_unified": f"{mb_w_uni:.2f} mm",
             "plate_thickness": "1.00 mm Steel",
-            "description": "Marbach SRP table specs adjusted to clean round shop rule heights (23.6 mm)."
+            "description": "Marbach SRP table specs adjusted to clean round shop rule heights."
         },
         "pertinax_marbach": {
-            "name": "3. Pertinax (Marbach Formula)",
+            "name": "3. Pertinax (Marbach Calc)",
             "rule_height": f"{pt_rule_h:.2f} mm",
             "rule_type": "VARIABLE (23.80 - D)",
             "depth": f"{pt_depth:.2f} mm",
@@ -217,7 +243,7 @@ HTML_TEMPLATE = """
                         <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
                             <span class="text-xs text-slate-500 font-medium block">Creasing Rule Height (Die)</span>
                             <span class="text-xl font-black text-blue-400">{{ data.infinya.rule_height }}</span>
-                            <span class="text-[10px] text-emerald-400 font-bold block mt-0.5">Standard Fixed Rule</span>
+                            <span class="text-[10px] text-emerald-400 font-bold block mt-0.5">Infinya Table Spec</span>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
@@ -231,16 +257,8 @@ HTML_TEMPLATE = """
                         </div>
                         <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800 space-y-2">
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-400">Parallel:</span>
-                                <span class="font-bold text-slate-100">{{ data.infinya.width_parallel }}</span>
-                            </div>
-                            <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-400">Cross-grain:</span>
-                                <span class="font-bold text-slate-100">{{ data.infinya.width_cross }}</span>
-                            </div>
-                            <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
-                                <span class="text-blue-400 font-bold">Unified Single Width:</span>
-                                <span class="font-black text-blue-300 text-sm">{{ data.infinya.width_unified }}</span>
+                                <span class="text-slate-400">Width:</span>
+                                <span class="font-bold text-slate-100">{{ data.infinya.width_unified }}</span>
                             </div>
                         </div>
                     </div>
@@ -284,7 +302,7 @@ HTML_TEMPLATE = """
                                 <span class="font-bold text-slate-100">{{ data.marbach_cp.width_cross }}</span>
                             </div>
                             <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
-                                <span class="text-amber-400 font-bold">Unified Single Width:</span>
+                                <span class="text-amber-400 font-bold">Unified Width:</span>
                                 <span class="font-black text-amber-300 text-sm">{{ data.marbach_cp.width_unified }}</span>
                             </div>
                         </div>
@@ -326,7 +344,7 @@ HTML_TEMPLATE = """
                                 <span class="font-bold text-slate-100">{{ data.pertinax_marbach.width_cross }}</span>
                             </div>
                             <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
-                                <span class="text-purple-400 font-bold">Unified Single Width:</span>
+                                <span class="text-purple-400 font-bold">Unified Width:</span>
                                 <span class="font-black text-purple-300 text-sm">{{ data.pertinax_marbach.width_unified }}</span>
                             </div>
                         </div>
@@ -359,10 +377,10 @@ HTML_TEMPLATE = """
                                 <span class="w-2 h-2 rounded-full bg-blue-400 mr-2"></span> 1. Pertinax (Infinya)
                             </td>
                             <td class="px-4 py-3">Pertinax</td>
-                            <td class="px-4 py-3 text-emerald-400 font-bold">{{ data.infinya.rule_height }} (Fixed)</td>
+                            <td class="px-4 py-3 text-emerald-400 font-bold">{{ data.infinya.rule_height }} (Table)</td>
                             <td class="px-4 py-3">{{ data.infinya.depth }}</td>
-                            <td class="px-4 py-3">{{ data.infinya.width_parallel }}</td>
-                            <td class="px-4 py-3">{{ data.infinya.width_cross }}</td>
+                            <td class="px-4 py-3">-</td>
+                            <td class="px-4 py-3">-</td>
                             <td class="px-4 py-3 text-blue-300 font-bold">{{ data.infinya.width_unified }}</td>
                         </tr>
                         <tr class="hover:bg-slate-800/30">
