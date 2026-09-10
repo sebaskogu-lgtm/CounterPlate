@@ -7,14 +7,14 @@ app = Flask(__name__)
 def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=None):
     rule_thickness = 0.71 if rule_pt == "2PT" else 1.05
 
-    # 1. INFINYA / SHOP FLOOR SPEC (Steel 1.00mm - Fixed 23.80mm Rule - Max Tolerance)
+    # 1. INFINYA / SHOP FLOOR SPEC (Countersteel 1.00mm - Fixed 23.80mm Rule)
     sf_rule_h = 23.80
     sf_depth = round(math.ceil((s + 0.10) * 20) / 20, 2)
     sf_w_par = round(rule_thickness + (1.60 * s), 2)
     sf_w_cross = round(rule_thickness + (1.85 * s), 2)
     sf_w_uni = round(math.ceil(sf_w_cross * 20) / 20, 2)
 
-    # 2. MARBACH SPECIFICATION (Steel 1.00mm - Reduced Rule Height - High Speed)
+    # 2. MARBACH SPECIFICATION (Countersteel 1.00mm - Reduced Rule Height)
     mb_depth = round(s + 0.05, 2)
     if s <= 0.35:
         mb_rule_h = 23.60
@@ -27,7 +27,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
     mb_w_cross = round(rule_thickness + (1.75 * s), 2)
     mb_w_uni = round(math.ceil(mb_w_cross * 20) / 20, 2)
 
-    # 3. PERTINAX COUNTERPLATE (Traditional - Variable Rule Height 23.80 - D)
+    # 3. PERTINAX (Traditional - Variable Rule Height 23.80 - D)
     pt_depth = round(s, 2)
     pt_rule_h = round(23.80 - pt_depth, 2)
     pt_w_par = round(rule_thickness + (1.40 * s), 2)
@@ -54,7 +54,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
                 "style_bg": "bg-amber-500/10",
                 "style_border": "border-amber-500/30",
                 "style_text": "text-amber-400",
-                "message": f"Plate is over-milled in depth ({actual_depth:.2f}mm) and narrow in width ({actual_width:.2f}mm). Risk of insufficient marking or card pinching at 23.80mm rule height!"
+                "message": f"Countersteel is over-milled in depth ({actual_depth:.2f}mm) and narrow in width ({actual_width:.2f}mm). Risk of insufficient marking!"
             }
         elif actual_width < sf_w_par:
             audit_verdict = {
@@ -62,7 +62,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
                 "style_bg": "bg-rose-500/10",
                 "style_border": "border-rose-500/30",
                 "style_text": "text-rose-400",
-                "message": f"Width ({actual_width:.2f}mm) is critically narrow for {s:.2f}mm board. High risk of fiber cracking or board tearing."
+                "message": f"Width ({actual_width:.2f}mm) is critically narrow for {s:.2f}mm board. High risk of fiber cracking."
             }
         else:
             audit_verdict = {
@@ -78,7 +78,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
         "rule_type": rule_pt,
         "rule_thickness": rule_thickness,
         "infinya": {
-            "name": "Infinya / Shop Floor Spec",
+            "name": "Countersteel (Infinya / Shop Spec)",
             "rule_height": f"{sf_rule_h:.2f} mm",
             "rule_type": "FIXED (23.80 mm)",
             "depth": f"{sf_depth:.2f} mm",
@@ -86,10 +86,10 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
             "width_cross": f"{sf_w_cross:.2f} mm",
             "width_unified": f"{sf_w_uni:.2f} mm",
             "plate_thickness": "1.00 mm Steel",
-            "description": "Infinya Shop Spec: Maximum shop-floor tolerance, safe against board variations, no die modification."
+            "description": "Maximum shop-floor tolerance, safe against board variations, no die modification."
         },
         "marbach": {
-            "name": "Marbach Specification",
+            "name": "Countersteel (Marbach Spec)",
             "rule_height": f"{mb_rule_h:.2f} mm",
             "rule_type": "REDUCED (Variable)",
             "depth": f"{mb_depth:.2f} mm",
@@ -100,7 +100,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
             "description": "Designed for high-speed runs. Requires special reduced rule heights in the die wood."
         },
         "pertinax": {
-            "name": "Pertinax Matrix (Traditional)",
+            "name": "Pertinax Matrix",
             "rule_height": f"{pt_rule_h:.2f} mm",
             "rule_type": "VARIABLE (23.80 - D)",
             "depth": f"{pt_depth:.2f} mm",
@@ -108,7 +108,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
             "width_cross": f"{pt_w_cross:.2f} mm",
             "width_unified": f"{pt_w_uni:.2f} mm",
             "plate_thickness": f"{pt_depth:.2f} mm Pertinax",
-            "description": "Standard milled Pertinax profile. Rule heights must be customized directly in the die wood."
+            "description": "Standard milled Pertinax profile. Rule heights must be customized directly in the die."
         },
         "audit": audit_verdict
     }
@@ -119,7 +119,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oman Laser - Die-Making & Counterplate Engine</title>
+    <title>Oman Laser - Countersteel & Pertinax Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -129,7 +129,6 @@ HTML_TEMPLATE = """
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen antialiased flex flex-col">
 
-    <!-- HEADER OMAN LASER -->
     <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
             <div class="flex items-center space-x-4">
@@ -138,7 +137,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div>
                     <h1 class="text-xl font-black text-white tracking-wide">Oman Laser <span class="text-blue-500 font-normal text-sm">| Die-Making & CAD</span></h1>
-                    <p class="text-xs text-slate-400">Steel Counterplate (Infinya & Marbach) & Pertinax Calculator</p>
+                    <p class="text-xs text-slate-400">Countersteel & Pertinax Creasing Calculator</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3">
@@ -215,19 +214,19 @@ HTML_TEMPLATE = """
         </div>
         {% endif %}
 
-        <!-- COMPARISON CARDS (INFINYA, MARBACH, PERTINAX) -->
+        <!-- COMPARISON CARDS -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- 1. INFINYA / SHOP FLOOR SPEC -->
+            <!-- 1. COUNTERSTEEL - INFINYA -->
             <div class="bg-slate-900 border-2 border-blue-500/50 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
                 <div class="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
-                    INFINYA SHOP SPEC
+                    RECOMMENDED PRODUCTION
                 </div>
                 <div>
                     <div class="flex items-center space-x-2 mb-2">
                         <i class="fa-solid fa-shield-halved text-blue-400"></i>
-                        <h3 class="font-bold text-lg text-white">1. Infinya / Shop Spec</h3>
+                        <h3 class="font-bold text-lg text-white">1. Countersteel (Infinya)</h3>
                     </div>
-                    <p class="text-xs text-slate-400 mb-6">Maximum tolerance & stability using standard 23.80 mm fixed rules.</p>
+                    <p class="text-xs text-slate-400 mb-6">{{ data.infinya.description }}</p>
                     <div class="space-y-4">
                         <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
                             <span class="text-xs text-slate-500 font-medium block">Creasing Rule Height (Die)</span>
@@ -260,19 +259,16 @@ HTML_TEMPLATE = """
                         </div>
                     </div>
                 </div>
-                <div class="mt-6 pt-4 border-t border-slate-800">
-                    <p class="text-[11px] text-slate-400 leading-relaxed"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Safe against board variation and milling offsets. Zero die modification needed.</p>
-                </div>
             </div>
 
-            <!-- 2. MARBACH SPEC -->
+            <!-- 2. COUNTERSTEEL - MARBACH -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
                 <div>
                     <div class="flex items-center space-x-2 mb-2">
                         <i class="fa-solid fa-bolt text-amber-400"></i>
-                        <h3 class="font-bold text-lg text-white">2. Marbach Spec</h3>
+                        <h3 class="font-bold text-lg text-white">2. Countersteel (Marbach)</h3>
                     </div>
-                    <p class="text-xs text-slate-400 mb-6">High-speed precision setup using reduced creasing rule heights.</p>
+                    <p class="text-xs text-slate-400 mb-6">{{ data.marbach.description }}</p>
                     <div class="space-y-4">
                         <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
                             <span class="text-xs text-slate-500 font-medium block">Creasing Rule Height (Die)</span>
@@ -305,19 +301,16 @@ HTML_TEMPLATE = """
                         </div>
                     </div>
                 </div>
-                <div class="mt-6 pt-4 border-t border-slate-800">
-                    <p class="text-[11px] text-slate-400 leading-relaxed"><i class="fa-solid fa-circle-info text-amber-400 mr-1"></i> Reduces machine vibration at high speeds. Requires dedicated rules in die.</p>
-                </div>
             </div>
 
-            <!-- 3. PERTINAX MATRIX -->
+            <!-- 3. PERTINAX -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
                 <div>
                     <div class="flex items-center space-x-2 mb-2">
                         <i class="fa-solid fa-sheet-plastic text-purple-400"></i>
                         <h3 class="font-bold text-lg text-white">3. Pertinax Matrix</h3>
                     </div>
-                    <p class="text-xs text-slate-400 mb-6">Traditional milled Pertinax setup with rule reduction formula (23.80 - D).</p>
+                    <p class="text-xs text-slate-400 mb-6">{{ data.pertinax.description }}</p>
                     <div class="space-y-4">
                         <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
                             <span class="text-xs text-slate-500 font-medium block">Creasing Rule Height (Die)</span>
@@ -350,16 +343,70 @@ HTML_TEMPLATE = """
                         </div>
                     </div>
                 </div>
-                <div class="mt-6 pt-4 border-t border-slate-800">
-                    <p class="text-[11px] text-slate-400 leading-relaxed"><i class="fa-solid fa-arrows-rotate text-purple-400 mr-1"></i> Matrix thickness equals board caliper. Must modify rules per caliper change.</p>
-                </div>
+            </div>
+        </div>
+
+        <!-- SUMMARY COMPARISON TABLE -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl overflow-hidden">
+            <h3 class="text-base font-bold text-white mb-4 flex items-center">
+                <i class="fa-solid fa-table-list text-blue-400 mr-2"></i> Comprehensive Specification Matrix
+            </h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-950 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
+                        <tr>
+                            <th class="px-4 py-3">Specification Profile</th>
+                            <th class="px-4 py-3">Base Material</th>
+                            <th class="px-4 py-3">Rule Height in Die</th>
+                            <th class="px-4 py-3">Channel Depth (D)</th>
+                            <th class="px-4 py-3">Parallel Width</th>
+                            <th class="px-4 py-3">Cross-Grain Width</th>
+                            <th class="px-4 py-3">Unified Width</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800/60">
+                        <tr class="hover:bg-slate-800/30 font-medium">
+                            <td class="px-4 py-3 text-blue-400 font-bold flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-blue-400 mr-2"></span> Countersteel (Infinya)
+                            </td>
+                            <td class="px-4 py-3">1.00 mm Steel</td>
+                            <td class="px-4 py-3 text-emerald-400 font-bold">{{ data.infinya.rule_height }} (Fixed)</td>
+                            <td class="px-4 py-3">{{ data.infinya.depth }}</td>
+                            <td class="px-4 py-3">{{ data.infinya.width_parallel }}</td>
+                            <td class="px-4 py-3">{{ data.infinya.width_cross }}</td>
+                            <td class="px-4 py-3 text-blue-300 font-bold">{{ data.infinya.width_unified }}</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/30">
+                            <td class="px-4 py-3 text-amber-400 font-bold flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-amber-400 mr-2"></span> Countersteel (Marbach)
+                            </td>
+                            <td class="px-4 py-3">1.00 mm Steel</td>
+                            <td class="px-4 py-3 text-amber-400 font-bold">{{ data.marbach.rule_height }} (Reduced)</td>
+                            <td class="px-4 py-3">{{ data.marbach.depth }}</td>
+                            <td class="px-4 py-3">{{ data.marbach.width_parallel }}</td>
+                            <td class="px-4 py-3">{{ data.marbach.width_cross }}</td>
+                            <td class="px-4 py-3 text-amber-300 font-bold">{{ data.marbach.width_unified }}</td>
+                        </tr>
+                        <tr class="hover:bg-slate-800/30 text-slate-400">
+                            <td class="px-4 py-3 text-purple-400 font-bold flex items-center">
+                                <span class="w-2 h-2 rounded-full bg-purple-400 mr-2"></span> Pertinax Matrix
+                            </td>
+                            <td class="px-4 py-3">{{ data.pertinax.plate_thickness }}</td>
+                            <td class="px-4 py-3 text-purple-400 font-bold">{{ data.pertinax.rule_height }} (Variable)</td>
+                            <td class="px-4 py-3">{{ data.pertinax.depth }}</td>
+                            <td class="px-4 py-3">{{ data.pertinax.width_parallel }}</td>
+                            <td class="px-4 py-3">{{ data.pertinax.width_cross }}</td>
+                            <td class="px-4 py-3 text-purple-300 font-bold">{{ data.pertinax.width_unified }}</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
     </main>
 
     <footer class="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
-        Oman Laser • Die-Making & Steel Counterplate CAD Engine • English Shop Edition
+        Oman Laser • Die-Making & Countersteel CAD Engine • English Shop Edition
     </footer>
 
 </body>
