@@ -7,21 +7,18 @@ app = Flask(__name__)
 def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=None):
     rule_thickness = 0.71 if rule_pt == "2PT" else 1.05
 
-    # 1. INFINYA / SHOP FLOOR SPEC (Countersteel 1.00mm - Fixed 23.80mm Rule)
+    # 1. COUNTERSTEEL - INFINYA / SHOP FLOOR SPEC (Steel 1.00mm - Fixed 23.80mm Rule)
     sf_rule_h = 23.80
     sf_depth = round(math.ceil((s + 0.10) * 20) / 20, 2)
     sf_w_par = round(rule_thickness + (1.60 * s), 2)
     sf_w_cross = round(rule_thickness + (1.85 * s), 2)
     sf_w_uni = round(math.ceil(sf_w_cross * 20) / 20, 2)
 
-    # 2. MARBACH SPECIFICATION (Countersteel 1.00mm - Reduced Rule Height)
+    # 2. COUNTERSTEEL - MARBACH SPEC (Reduced Rule Height in round numbers: 23.5, 23.6, 23.7...)
     mb_depth = round(s + 0.05, 2)
-    if s <= 0.35:
-        mb_rule_h = 23.60
-    elif s <= 0.50:
-        mb_rule_h = 23.65
-    else:
-        mb_rule_h = 23.70
+    # Cálculo de altura rebajada ajustado a un decimal estحctو (números redondos sin 23.65)
+    raw_mb_rule_h = 23.80 - (s * 0.75)
+    mb_rule_h = round(round(raw_mb_rule_h * 10) / 10, 1)
 
     mb_w_par = round(rule_thickness + (1.50 * s), 2)
     mb_w_cross = round(rule_thickness + (1.75 * s), 2)
@@ -90,14 +87,14 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
         },
         "marbach": {
             "name": "Countersteel (Marbach Spec)",
-            "rule_height": f"{mb_rule_h:.2f} mm",
-            "rule_type": "REDUCED (Variable)",
+            "rule_height": f"{mb_rule_h:.1f} mm",
+            "rule_type": "REDUCED (Round)",
             "depth": f"{mb_depth:.2f} mm",
             "width_parallel": f"{mb_w_par:.2f} mm",
             "width_cross": f"{mb_w_cross:.2f} mm",
             "width_unified": f"{mb_w_uni:.2f} mm",
             "plate_thickness": "1.00 mm Steel",
-            "description": "Designed for high-speed runs. Requires special reduced rule heights in the die wood."
+            "description": "High-speed setup with standard round-number reduced rule heights (23.5, 23.6, 23.7...)."
         },
         "pertinax": {
             "name": "Pertinax Matrix",
@@ -273,7 +270,7 @@ HTML_TEMPLATE = """
                         <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
                             <span class="text-xs text-slate-500 font-medium block">Creasing Rule Height (Die)</span>
                             <span class="text-xl font-black text-amber-400">{{ data.marbach.rule_height }}</span>
-                            <span class="text-[10px] text-amber-400 font-bold block mt-0.5">Reduced Rule Required</span>
+                            <span class="text-[10px] text-amber-400 font-bold block mt-0.5">Round Number Height</span>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
@@ -381,7 +378,7 @@ HTML_TEMPLATE = """
                                 <span class="w-2 h-2 rounded-full bg-amber-400 mr-2"></span> Countersteel (Marbach)
                             </td>
                             <td class="px-4 py-3">1.00 mm Steel</td>
-                            <td class="px-4 py-3 text-amber-400 font-bold">{{ data.marbach.rule_height }} (Reduced)</td>
+                            <td class="px-4 py-3 text-amber-400 font-bold">{{ data.marbach.rule_height }} (Round)</td>
                             <td class="px-4 py-3">{{ data.marbach.depth }}</td>
                             <td class="px-4 py-3">{{ data.marbach.width_parallel }}</td>
                             <td class="px-4 py-3">{{ data.marbach.width_cross }}</td>
