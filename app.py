@@ -1,26 +1,31 @@
 import math
+import streamlit as st
 
-def calcular_parametros_hendido(s):
-    """
-    Calcula los parámetros de hendido según el espesor del cartón (s) en mm.
-    Soporta Regla 2PT (0.71 mm).
-    """
+st.set_page_config(page_title="Calculadora de Hendido", layout="wide")
+
+st.title("🛠️ Especificaciones de Troquelado: Steel Counterplate")
+st.caption("Cálculo de matrices, profundidades y reglas de marcado (Regla 2PT / 0.71 mm)")
+
+# Entrada interactiva de Streamlit (reemplaza a input())
+espesor = st.number_input(
+    "Ingrese el espesor del cartón (s) en mm:", 
+    min_value=0.10, 
+    max_value=1.50, 
+    value=0.40, 
+    step=0.01
+)
+
+def calcular_parametros(s):
     regla_espesor = 0.71  # 2PT
 
-    # 1. PERFIL SHOP FLOOR / TALLER (Regla Fija 23.80 mm en Steel 1.00 mm)
-    sf_regla_altura = 23.80
-    sf_chapa_espesor = 1.00
-    # Profundidad: s + 0.10 mm (redondeado a 0.05 mm superior)
+    # 1. SHOP FLOOR (Regla Fija 23.80 mm en Steel 1.00 mm)
     sf_profundidad = round(math.ceil((s + 0.10) * 20) / 20, 2)
     sf_ancho_par = round(regla_espesor + (1.60 * s), 2)
     sf_ancho_cross = round(regla_espesor + (1.85 * s), 2)
     sf_ancho_unico = round(math.ceil(sf_ancho_cross * 20) / 20, 2)
 
-    # 2. PERFIL MARBACH SPEC (Regla Rebajada / Variable en Steel 1.00 mm)
-    mb_chapa_espesor = 1.00
+    # 2. MARBACH SPEC (Regla Rebajada)
     mb_profundidad = round(s + 0.05, 2)
-    
-    # Altura de regla según tabla Marbach para chapa metálica
     if s <= 0.35:
         mb_regla_altura = 23.60
     elif s <= 0.50:
@@ -32,75 +37,52 @@ def calcular_parametros_hendido(s):
     mb_ancho_cross = round(regla_espesor + (1.75 * s), 2)
     mb_ancho_unico = round(math.ceil(mb_ancho_cross * 20) / 20, 2)
 
-    # 3. PERFIL PERTINAX TRADICIONAL (Referencia)
+    # 3. PERTINAX TRADICIONAL
     pt_profundidad = round(s, 2)
     pt_regla_altura = round(23.80 - pt_profundidad, 2)
     pt_ancho_par = round(regla_espesor + (1.40 * s), 2)
     pt_ancho_cross = round(regla_espesor + (1.60 * s), 2)
     pt_ancho_unico = round(math.ceil(pt_ancho_cross * 20) / 20, 2)
 
-    return [
-        {
-            "perfil": "1. SHOP FLOOR (Regla Fija - Máxima Tolerancia)",
-            "sistema": "Steel Counterplate (1.00 mm)",
-            "regla_altura": f"{sf_regla_altura:.2f} mm (FIJA)",
-            "profundidad": f"{sf_profundidad:.2f} mm",
-            "ancho_par": f"{sf_ancho_par:.2f} mm",
-            "ancho_cross": f"{sf_ancho_cross:.2f} mm",
-            "ancho_unico": f"{sf_ancho_unico:.2f} mm",
-            "nota": "Permite variaciones de fresado/papel. Altura de regla estándar en troquel."
+    return {
+        "1. Shop Floor (Estrategia Taller)": {
+            "Regla Altura": "23.80 mm (FIJA)",
+            "Chapa": "1.00 mm",
+            "Profundidad (D)": f"{sf_profundidad:.2f} mm",
+            "Ancho A Favor": f"{sf_ancho_par:.2f} mm",
+            "Ancho A Contra": f"{sf_ancho_cross:.2f} mm",
+            "Ancho Unificado Seguro": f"{sf_ancho_unico:.2f} mm",
+            "Nota": "Regla fija de 23.80 mm. Máxima tolerancia operativa y seguridad."
         },
-        {
-            "perfil": "2. MARBACH SPEC (Regla Rebajada - Alta Velocidad)",
-            "sistema": "Steel Counterplate (1.00 mm)",
-            "regla_altura": f"{mb_regla_altura:.2f} mm (REBAJADA)",
-            "profundidad": f"{mb_profundidad:.2f} mm",
-            "ancho_par": f"{mb_ancho_par:.2f} mm",
-            "ancho_cross": f"{mb_ancho_cross:.2f} mm",
-            "ancho_unico": f"{mb_ancho_unico:.2f} mm",
-            "nota": "Ajuste teórico estrecho. Requiere pedir flejes de altura especial."
+        "2. Marbach Spec": {
+            "Regla Altura": f"{mb_regla_altura:.2f} mm (REBAJADA)",
+            "Chapa": "1.00 mm",
+            "Profundidad (D)": f"{mb_profundidad:.2f} mm",
+            "Ancho A Favor": f"{mb_ancho_par:.2f} mm",
+            "Ancho A Contra": f"{mb_ancho_cross:.2f} mm",
+            "Ancho Unificado Seguro": f"{mb_ancho_unico:.2f} mm",
+            "Nota": "Ajuste teórico estrecho para alta velocidad. Requiere regla rebajada."
         },
-        {
-            "perfil": "3. PERTINAX TRADICIONAL (Referencia)",
-            "sistema": "Matriz Pertinax / Rillma",
-            "regla_altura": f"{pt_regla_altura:.2f} mm (23.80 - D)",
-            "profundidad": f"{pt_profundidad:.2f} mm",
-            "ancho_par": f"{pt_ancho_par:.2f} mm",
-            "ancho_cross": f"{pt_ancho_cross:.2f} mm",
-            "ancho_unico": f"{pt_ancho_unico:.2f} mm",
-            "nota": "La altura de regla varía directamente según el espesor de la tira."
+        "3. Pertinax Tradicional": {
+            "Regla Altura": f"{pt_regla_altura:.2f} mm",
+            "Chapa": "Matriz / Tira",
+            "Profundidad (D)": f"{pt_profundidad:.2f} mm",
+            "Ancho A Favor": f"{pt_ancho_par:.2f} mm",
+            "Ancho A Contra": f"{pt_ancho_cross:.2f} mm",
+            "Ancho Unificado Seguro": f"{pt_ancho_unico:.2f} mm",
+            "Nota": "Referencia estándar. Altura de regla variable (23.80 - D)."
         }
-    ]
+    }
 
-def mostrar_reporte(s):
-    resultados = calcular_parametros_hendido(s)
-    print("\n" + "="*75)
-    print(f"   ESPECIFICACIONES DE HENDIDO PARA CARTÓN: {s:.2f} mm (Regla 2PT / 0.71 mm)")
-    print("="*75)
-    
-    for r in resultados:
-        print(f"\n---> {r['perfil']}")
-        print(f"     Sistema:                  {r['sistema']}")
-        print(f"     ALTURA REGLA DE MARCADO:  {r['regla_altura']}  <--- [CRÍTICO]")
-        print(f"     Profundidad del Canal:    {r['profundidad']}")
-        print(f"     Ancho A Favor (Parallel): {r['ancho_par']}")
-        print(f"     Ancho A Contra (Cross):   {r['ancho_cross']}")
-        print(f"     Ancho Unificado Seguro:   {r['ancho_unico']}")
-        print(f"     Nota Técnica:             {r['nota']}")
-        print("-" * 75)
+res = calcular_parametros(espesor)
+cols = st.columns(3)
 
-# --- BUCLE PRINCIPAL EN REPLIT ---
-if __name__ == "__main__":
-    print("Calculadora de Matriz y Reglas de Marcado (Steel / Marbach / Pertinax)")
-    while True:
-        try:
-            entrada = input("\nIngrese el espesor del cartón en mm (ej. 0.40) o 's' para salir: ")
-            if entrada.lower() == 's':
-                break
-            espesor = float(entrada)
-            if espesor <= 0:
-                print("El espesor debe ser mayor a 0.")
-                continue
-            mostrar_reporte(espesor)
-        except ValueError:
-            print("Entrada inválida. Ingrese un número decimal (ej. 0.40 o 0.45).")
+for idx, (perfil, datos) in enumerate(res.items()):
+    with cols[idx]:
+        st.subheader(perfil)
+        st.metric("Altura de Regla", datos["Regla Altura"])
+        st.write(f"**Profundidad Canal:** {datos['Profundidad (D)']}")
+        st.write(f"**Ancho A Favor:** {datos['Ancho A Favor']}")
+        st.write(f"**Ancho A Contra:** {datos['Ancho A Contra']}")
+        st.write(f"**Ancho Unificado:** {datos['Ancho Unificado Seguro']}")
+        st.info(datos["Nota"])
