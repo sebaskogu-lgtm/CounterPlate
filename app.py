@@ -7,25 +7,21 @@ app = Flask(__name__)
 def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=None):
     rule_thickness = 0.71 if rule_pt == "2PT" else 1.05
 
-    # 1. INFINYA / SHOP FLOOR SPEC (Countersteel 1.00mm - Fixed 23.80mm Rule)
-    sf_rule_h = 23.80
-    sf_depth = round(math.ceil((s + 0.10) * 20) / 20, 2)
-    sf_w_par = round(rule_thickness + (1.60 * s), 2)
-    sf_w_cross = round(rule_thickness + (1.85 * s), 2)
-    sf_w_uni = round(math.ceil(sf_w_cross * 20) / 20, 2)
+    # 1. PERTINAX - INFINYA SPEC (Client Request)
+    inf_rule_h = 23.80
+    inf_depth = round(math.ceil((s + 0.10) * 20) / 20, 2)
+    inf_w_par = round(rule_thickness + (1.60 * s), 2)
+    inf_w_cross = round(rule_thickness + (1.85 * s), 2)
+    inf_w_uni = round(math.ceil(inf_w_cross * 20) / 20, 2)
 
-    # 2. COUNTERSTEEL - MARBACH SPEC (Strict Round Rule Heights: 23.6 mm)
-    mb_depth = round(s + 0.10, 2)  #[cite: 2]
-    if s <= 0.50:
-        mb_rule_h = 23.6           # Clean round number instead of 23.65
-    else:
-        mb_rule_h = 23.5
-
-    mb_w_par = round(rule_thickness + (1.85 * s), 2)  #[cite: 2]
-    mb_w_cross = round(mb_w_par + 0.10, 2)            #[cite: 2]
+    # 2. COUNTERPLATE MARBACH (Steel SRP Specification - Round Rule Heights)
+    mb_depth = round(s + 0.10, 2)  #[cite: 2] Marbach SRP depth standard (s + 0.10)
+    mb_rule_h = 23.6               # Clean round shop floor rule height (replacing 23.65)
+    mb_w_par = round(rule_thickness + (1.85 * s), 2)  #[cite: 2] Marbach SRP parallel width
+    mb_w_cross = round(mb_w_par + 0.10, 2)            #[cite: 2] Marbach SRP cross width (+0.10mm)
     mb_w_uni = round(math.ceil(mb_w_cross * 20) / 20, 2)
 
-    # 3. PERTINAX (Traditional - Variable Rule Height 23.80 - D)
+    # 3. PERTINAX - MARBACH CALCULATION (Traditional Variable Rule)
     pt_depth = round(s, 2)
     pt_rule_h = round(23.80 - pt_depth, 2)
     pt_w_par = round(rule_thickness + (1.40 * s), 2)
@@ -35,8 +31,8 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
     # QUALITY CONTROL AUDIT
     audit_verdict = None
     if actual_depth is not None and actual_width is not None:
-        depth_dev = actual_depth - sf_depth
-        width_dev = actual_width - sf_w_cross
+        depth_dev = actual_depth - inf_depth
+        width_dev = actual_width - inf_w_cross
         
         if abs(depth_dev) <= 0.02 and abs(width_dev) <= 0.03:
             audit_verdict = {
@@ -44,23 +40,15 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
                 "style_bg": "bg-emerald-500/10",
                 "style_border": "border-emerald-500/30",
                 "style_text": "text-emerald-400",
-                "message": "Plate dimensions are within optimal shop-floor manufacturing tolerances."
+                "message": "Dimensions are within optimal shop-floor manufacturing tolerances."
             }
-        elif actual_depth > sf_depth and actual_width < sf_w_cross:
+        elif actual_depth > inf_depth and actual_width < inf_w_cross:
             audit_verdict = {
                 "status": "WARNING",
                 "style_bg": "bg-amber-500/10",
                 "style_border": "border-amber-500/30",
                 "style_text": "text-amber-400",
-                "message": f"Countersteel is over-milled in depth ({actual_depth:.2f}mm) and narrow in width ({actual_width:.2f}mm). Risk of insufficient marking!"
-            }
-        elif actual_width < sf_w_par:
-            audit_verdict = {
-                "status": "ALERT",
-                "style_bg": "bg-rose-500/10",
-                "style_border": "border-rose-500/30",
-                "style_text": "text-rose-400",
-                "message": f"Width ({actual_width:.2f}mm) is critically narrow for {s:.2f}mm board. High risk of fiber cracking."
+                "message": f"Channel is over-milled in depth ({actual_depth:.2f}mm) and narrow in width ({actual_width:.2f}mm)."
             }
         else:
             audit_verdict = {
@@ -68,7 +56,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
                 "style_bg": "bg-blue-500/10",
                 "style_border": "border-blue-500/30",
                 "style_text": "text-blue-400",
-                "message": f"Deviations detected: Depth dev = {depth_dev:+.2f}mm, Width dev = {width_dev:+.2f}mm. Adjust make-ready pressure accordingly."
+                "message": f"Deviations detected: Depth dev = {depth_dev:+.2f}mm, Width dev = {width_dev:+.2f}mm."
             }
 
     return {
@@ -76,18 +64,18 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
         "rule_type": rule_pt,
         "rule_thickness": rule_thickness,
         "infinya": {
-            "name": "Countersteel (Infinya / Shop Spec)",
-            "rule_height": f"{sf_rule_h:.2f} mm",
+            "name": "1. Pertinax (Infinya Spec)",
+            "rule_height": f"{inf_rule_h:.2f} mm",
             "rule_type": "FIXED (23.80 mm)",
-            "depth": f"{sf_depth:.2f} mm",
-            "width_parallel": f"{sf_w_par:.2f} mm",
-            "width_cross": f"{sf_w_cross:.2f} mm",
-            "width_unified": f"{sf_w_uni:.2f} mm",
-            "plate_thickness": "1.00 mm Steel",
-            "description": "Maximum shop-floor tolerance, safe against board variations, no die modification."
+            "depth": f"{inf_depth:.2f} mm",
+            "width_parallel": f"{inf_w_par:.2f} mm",
+            "width_cross": f"{inf_w_cross:.2f} mm",
+            "width_unified": f"{inf_w_uni:.2f} mm",
+            "plate_thickness": "Pertinax / Standard",
+            "description": "Specific client requirement (Infinya): Fixed standard rule with optimized shop depth."
         },
-        "marbach": {
-            "name": "Countersteel (Marbach Spec)",
+        "marbach_cp": {
+            "name": "2. Counterplate Marbach (SRP)",
             "rule_height": f"{mb_rule_h:.1f} mm",
             "rule_type": "ROUND SPEC (23.6 mm)",
             "depth": f"{mb_depth:.2f} mm",
@@ -95,10 +83,10 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
             "width_cross": f"{mb_w_cross:.2f} mm",
             "width_unified": f"{mb_w_uni:.2f} mm",
             "plate_thickness": "1.00 mm Steel",
-            "description": "Marbach SRP table alignment using clean round rule heights (23.6 mm)."
+            "description": "Marbach SRP table specs adjusted to clean round shop rule heights (23.6 mm)."
         },
-        "pertinax": {
-            "name": "Pertinax Matrix",
+        "pertinax_marbach": {
+            "name": "3. Pertinax (Marbach Formula)",
             "rule_height": f"{pt_rule_h:.2f} mm",
             "rule_type": "VARIABLE (23.80 - D)",
             "depth": f"{pt_depth:.2f} mm",
@@ -106,7 +94,7 @@ def calculate_creasing_specs(s, rule_pt="2PT", actual_depth=None, actual_width=N
             "width_cross": f"{pt_w_cross:.2f} mm",
             "width_unified": f"{pt_w_uni:.2f} mm",
             "plate_thickness": f"{pt_depth:.2f} mm Pertinax",
-            "description": "Standard milled Pertinax profile. Rule heights must be customized directly in the die."
+            "description": "Traditional Marbach calculation where matrix thickness equals board caliper."
         },
         "audit": audit_verdict
     }
@@ -117,7 +105,7 @@ HTML_TEMPLATE = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Oman Laser - Countersteel & Pertinax Engine</title>
+    <title>Oman Laser - Die-Making & Counterplate Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -135,7 +123,7 @@ HTML_TEMPLATE = """
                 </div>
                 <div>
                     <h1 class="text-xl font-black text-white tracking-wide">Oman Laser <span class="text-blue-500 font-normal text-sm">| Die-Making & CAD</span></h1>
-                    <p class="text-xs text-slate-400">Countersteel & Pertinax Creasing Calculator</p>
+                    <p class="text-xs text-slate-400">Infinya, Marbach Counterplate & Pertinax Calculator</p>
                 </div>
             </div>
             <div class="flex items-center space-x-3">
@@ -214,15 +202,15 @@ HTML_TEMPLATE = """
 
         <!-- COMPARISON CARDS -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- 1. COUNTERSTEEL - INFINYA -->
+            <!-- 1. PERTINAX - INFINYA -->
             <div class="bg-slate-900 border-2 border-blue-500/50 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
                 <div class="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
-                    RECOMMENDED PRODUCTION
+                    INFINYA SPEC
                 </div>
                 <div>
                     <div class="flex items-center space-x-2 mb-2">
-                        <i class="fa-solid fa-shield-halved text-blue-400"></i>
-                        <h3 class="font-bold text-lg text-white">1. Countersteel (Infinya)</h3>
+                        <i class="fa-solid fa-file-lines text-blue-400"></i>
+                        <h3 class="font-bold text-lg text-white">1. Pertinax (Infinya)</h3>
                     </div>
                     <p class="text-xs text-slate-400 mb-6">{{ data.infinya.description }}</p>
                     <div class="space-y-4">
@@ -233,8 +221,8 @@ HTML_TEMPLATE = """
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
-                                <span class="text-xs text-slate-500 font-medium block">Plate Base</span>
-                                <span class="text-sm font-bold text-slate-200">1.00 mm Steel</span>
+                                <span class="text-xs text-slate-500 font-medium block">Material</span>
+                                <span class="text-sm font-bold text-slate-200">Pertinax</span>
                             </div>
                             <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
                                 <span class="text-xs text-slate-500 font-medium block">Channel Depth (D)</span>
@@ -243,11 +231,11 @@ HTML_TEMPLATE = """
                         </div>
                         <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800 space-y-2">
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-400">Parallel (With grain):</span>
+                                <span class="text-slate-400">Parallel:</span>
                                 <span class="font-bold text-slate-100">{{ data.infinya.width_parallel }}</span>
                             </div>
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-400">Cross-grain (Across):</span>
+                                <span class="text-slate-400">Cross-grain:</span>
                                 <span class="font-bold text-slate-100">{{ data.infinya.width_cross }}</span>
                             </div>
                             <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
@@ -259,19 +247,22 @@ HTML_TEMPLATE = """
                 </div>
             </div>
 
-            <!-- 2. COUNTERSTEEL - MARBACH -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+            <!-- 2. COUNTERPLATE MARBACH -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between shadow-2xl">
+                <div class="absolute top-0 right-0 bg-amber-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-bl-xl tracking-wider">
+                    MARBACH SRP TABLE
+                </div>
                 <div>
                     <div class="flex items-center space-x-2 mb-2">
                         <i class="fa-solid fa-bolt text-amber-400"></i>
-                        <h3 class="font-bold text-lg text-white">2. Countersteel (Marbach)</h3>
+                        <h3 class="font-bold text-lg text-white">2. Counterplate Marbach</h3>
                     </div>
-                    <p class="text-xs text-slate-400 mb-6">{{ data.marbach.description }}</p>
+                    <p class="text-xs text-slate-400 mb-6">{{ data.marbach_cp.description }}</p>
                     <div class="space-y-4">
                         <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
                             <span class="text-xs text-slate-500 font-medium block">Creasing Rule Height (Die)</span>
-                            <span class="text-xl font-black text-amber-400">{{ data.marbach.rule_height }}</span>
-                            <span class="text-[10px] text-amber-400 font-bold block mt-0.5">Round Number Height</span>
+                            <span class="text-xl font-black text-amber-400">{{ data.marbach_cp.rule_height }}</span>
+                            <span class="text-[10px] text-amber-400 font-bold block mt-0.5">Round Shop Standard</span>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
@@ -280,63 +271,63 @@ HTML_TEMPLATE = """
                             </div>
                             <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
                                 <span class="text-xs text-slate-500 font-medium block">Channel Depth (D)</span>
-                                <span class="text-sm font-bold text-slate-200">{{ data.marbach.depth }}</span>
+                                <span class="text-sm font-bold text-slate-200">{{ data.marbach_cp.depth }}</span>
                             </div>
                         </div>
                         <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800 space-y-2">
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-400">Parallel (With grain):</span>
-                                <span class="font-bold text-slate-100">{{ data.marbach.width_parallel }}</span>
+                                <span class="text-slate-400">Parallel:</span>
+                                <span class="font-bold text-slate-100">{{ data.marbach_cp.width_parallel }}</span>
                             </div>
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-400">Cross-grain (Across):</span>
-                                <span class="font-bold text-slate-100">{{ data.marbach.width_cross }}</span>
+                                <span class="text-slate-400">Cross-grain:</span>
+                                <span class="font-bold text-slate-100">{{ data.marbach_cp.width_cross }}</span>
                             </div>
                             <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
                                 <span class="text-amber-400 font-bold">Unified Single Width:</span>
-                                <span class="font-black text-amber-300 text-sm">{{ data.marbach.width_unified }}</span>
+                                <span class="font-black text-amber-300 text-sm">{{ data.marbach_cp.width_unified }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- 3. PERTINAX -->
+            <!-- 3. PERTINAX - MARBACH FORMULA -->
             <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
                 <div>
                     <div class="flex items-center space-x-2 mb-2">
                         <i class="fa-solid fa-sheet-plastic text-purple-400"></i>
-                        <h3 class="font-bold text-lg text-white">3. Pertinax Matrix</h3>
+                        <h3 class="font-bold text-lg text-white">3. Pertinax (Marbach Calc)</h3>
                     </div>
-                    <p class="text-xs text-slate-400 mb-6">{{ data.pertinax.description }}</p>
+                    <p class="text-xs text-slate-400 mb-6">{{ data.pertinax_marbach.description }}</p>
                     <div class="space-y-4">
                         <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800">
                             <span class="text-xs text-slate-500 font-medium block">Creasing Rule Height (Die)</span>
-                            <span class="text-xl font-black text-purple-400">{{ data.pertinax.rule_height }}</span>
-                            <span class="text-[10px] text-purple-400 font-bold block mt-0.5">Variable (23.80 - Depth)</span>
+                            <span class="text-xl font-black text-purple-400">{{ data.pertinax_marbach.rule_height }}</span>
+                            <span class="text-[10px] text-purple-400 font-bold block mt-0.5">Variable (23.80 - D)</span>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
                                 <span class="text-xs text-slate-500 font-medium block">Matrix Material</span>
-                                <span class="text-sm font-bold text-slate-200">{{ data.pertinax.plate_thickness }}</span>
+                                <span class="text-sm font-bold text-slate-200">{{ data.pertinax_marbach.plate_thickness }}</span>
                             </div>
                             <div class="bg-slate-950/50 p-3 rounded-xl border border-slate-800">
                                 <span class="text-xs text-slate-500 font-medium block">Channel Depth (D)</span>
-                                <span class="text-sm font-bold text-slate-200">{{ data.pertinax.depth }}</span>
+                                <span class="text-sm font-bold text-slate-200">{{ data.pertinax_marbach.depth }}</span>
                             </div>
                         </div>
                         <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800 space-y-2">
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-400">Parallel (With grain):</span>
-                                <span class="font-bold text-slate-100">{{ data.pertinax.width_parallel }}</span>
+                                <span class="text-slate-400">Parallel:</span>
+                                <span class="font-bold text-slate-100">{{ data.pertinax_marbach.width_parallel }}</span>
                             </div>
                             <div class="flex justify-between items-center text-xs">
-                                <span class="text-slate-400">Cross-grain (Across):</span>
-                                <span class="font-bold text-slate-100">{{ data.pertinax.width_cross }}</span>
+                                <span class="text-slate-400">Cross-grain:</span>
+                                <span class="font-bold text-slate-100">{{ data.pertinax_marbach.width_cross }}</span>
                             </div>
                             <div class="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
                                 <span class="text-purple-400 font-bold">Unified Single Width:</span>
-                                <span class="font-black text-purple-300 text-sm">{{ data.pertinax.width_unified }}</span>
+                                <span class="font-black text-purple-300 text-sm">{{ data.pertinax_marbach.width_unified }}</span>
                             </div>
                         </div>
                     </div>
@@ -353,7 +344,7 @@ HTML_TEMPLATE = """
                 <table class="w-full text-left text-sm text-slate-300">
                     <thead class="bg-slate-950 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-800">
                         <tr>
-                            <th class="px-4 py-3">Specification Profile</th>
+                            <th class="px-4 py-3">Methodology Profile</th>
                             <th class="px-4 py-3">Base Material</th>
                             <th class="px-4 py-3">Rule Height in Die</th>
                             <th class="px-4 py-3">Channel Depth (D)</th>
@@ -365,9 +356,9 @@ HTML_TEMPLATE = """
                     <tbody class="divide-y divide-slate-800/60">
                         <tr class="hover:bg-slate-800/30 font-medium">
                             <td class="px-4 py-3 text-blue-400 font-bold flex items-center">
-                                <span class="w-2 h-2 rounded-full bg-blue-400 mr-2"></span> Countersteel (Infinya)
+                                <span class="w-2 h-2 rounded-full bg-blue-400 mr-2"></span> 1. Pertinax (Infinya)
                             </td>
-                            <td class="px-4 py-3">1.00 mm Steel</td>
+                            <td class="px-4 py-3">Pertinax</td>
                             <td class="px-4 py-3 text-emerald-400 font-bold">{{ data.infinya.rule_height }} (Fixed)</td>
                             <td class="px-4 py-3">{{ data.infinya.depth }}</td>
                             <td class="px-4 py-3">{{ data.infinya.width_parallel }}</td>
@@ -376,25 +367,25 @@ HTML_TEMPLATE = """
                         </tr>
                         <tr class="hover:bg-slate-800/30">
                             <td class="px-4 py-3 text-amber-400 font-bold flex items-center">
-                                <span class="w-2 h-2 rounded-full bg-amber-400 mr-2"></span> Countersteel (Marbach)
+                                <span class="w-2 h-2 rounded-full bg-amber-400 mr-2"></span> 2. Counterplate Marbach (SRP)
                             </td>
                             <td class="px-4 py-3">1.00 mm Steel</td>
-                            <td class="px-4 py-3 text-amber-400 font-bold">{{ data.marbach.rule_height }} (Round)</td>
-                            <td class="px-4 py-3">{{ data.marbach.depth }}</td>
-                            <td class="px-4 py-3">{{ data.marbach.width_parallel }}</td>
-                            <td class="px-4 py-3">{{ data.marbach.width_cross }}</td>
-                            <td class="px-4 py-3 text-amber-300 font-bold">{{ data.marbach.width_unified }}</td>
+                            <td class="px-4 py-3 text-amber-400 font-bold">{{ data.marbach_cp.rule_height }} (Round)</td>
+                            <td class="px-4 py-3">{{ data.marbach_cp.depth }}</td>
+                            <td class="px-4 py-3">{{ data.marbach_cp.width_parallel }}</td>
+                            <td class="px-4 py-3">{{ data.marbach_cp.width_cross }}</td>
+                            <td class="px-4 py-3 text-amber-300 font-bold">{{ data.marbach_cp.width_unified }}</td>
                         </tr>
                         <tr class="hover:bg-slate-800/30 text-slate-400">
                             <td class="px-4 py-3 text-purple-400 font-bold flex items-center">
-                                <span class="w-2 h-2 rounded-full bg-purple-400 mr-2"></span> Pertinax Matrix
+                                <span class="w-2 h-2 rounded-full bg-purple-400 mr-2"></span> 3. Pertinax (Marbach Calc)
                             </td>
-                            <td class="px-4 py-3">{{ data.pertinax.plate_thickness }}</td>
-                            <td class="px-4 py-3 text-purple-400 font-bold">{{ data.pertinax.rule_height }} (Variable)</td>
-                            <td class="px-4 py-3">{{ data.pertinax.depth }}</td>
-                            <td class="px-4 py-3">{{ data.pertinax.width_parallel }}</td>
-                            <td class="px-4 py-3">{{ data.pertinax.width_cross }}</td>
-                            <td class="px-4 py-3 text-purple-300 font-bold">{{ data.pertinax.width_unified }}</td>
+                            <td class="px-4 py-3">{{ data.pertinax_marbach.plate_thickness }}</td>
+                            <td class="px-4 py-3 text-purple-400 font-bold">{{ data.pertinax_marbach.rule_height }} (Variable)</td>
+                            <td class="px-4 py-3">{{ data.pertinax_marbach.depth }}</td>
+                            <td class="px-4 py-3">{{ data.pertinax_marbach.width_parallel }}</td>
+                            <td class="px-4 py-3">{{ data.pertinax_marbach.width_cross }}</td>
+                            <td class="px-4 py-3 text-purple-300 font-bold">{{ data.pertinax_marbach.width_unified }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -404,7 +395,7 @@ HTML_TEMPLATE = """
     </main>
 
     <footer class="border-t border-slate-800 py-4 text-center text-xs text-slate-500">
-        Oman Laser • Die-Making & Countersteel CAD Engine • English Shop Edition
+        Oman Laser • Die-Making & CAD Engine • English Shop Edition
     </footer>
 
 </body>
